@@ -109,3 +109,11 @@ View the [docs](https://docs.rs/blackscholes) for usage and examples.
 **Other packages available:**  
 Python: [Pypi](https://pypi.org/project/blackscholes-python/)  
 WASM: [npm](https://www.npmjs.com/package/@haydenr4/blackscholes_wasm)  
+
+## API note
+
+`calc_all_greeks()` returns a typed struct `AllGreeks` (not a HashMap) for zero-allocation and faster access to fields like `delta`, `gamma`, etc.
+
+## Build performance
+
+This repo enables LTO, codegen-units=1, opt-level=3, panic=abort and `target-cpu=native` (via `.cargo/config.toml`) for maximum throughput. Use `cargo bench` to run Criterion benchmarks.

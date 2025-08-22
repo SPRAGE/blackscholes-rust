@@ -16,9 +16,10 @@
 //!
 //! See the [Github Repo](https://github.com/hayden4r4/blackscholes-rust/tree/master) for full source code.  Other implementations such as a [npm WASM package](https://www.npmjs.com/package/@haydenr4/blackscholes_wasm) and a [python module](https://pypi.org/project/blackscholes/) are also available.
 
-pub use greeks::Greeks;
+pub use greeks::{AllGreeks, Greeks};
 pub use implied_volatility::ImpliedVolatility;
 pub use inputs::{Inputs, OptionType};
+pub use crate::error::BlackScholesError;
 use lets_be_rational::normal_distribution::{standard_normal_cdf, standard_normal_pdf};
 pub use pricing::Pricing;
 
@@ -27,6 +28,7 @@ mod implied_volatility;
 mod inputs;
 pub mod lets_be_rational;
 mod pricing;
+mod error;
 
 pub(crate) const DAYS_PER_YEAR: f64 = 365.25;
 
@@ -42,15 +44,14 @@ pub(crate) const F: f64 = -2.102_376_9e-5;
 /// s, k, r, q, t, sigma.
 /// # Returns
 /// Tuple (f64, f64) of (d1, d2)
-pub(crate) fn calc_d1d2(inputs: &Inputs) -> Result<(f64, f64), String> {
-    let sigma = inputs
-        .sigma
-        .ok_or("Expected Some(f64) for self.sigma, received None")?;
+#[inline(always)]
+pub(crate) fn calc_d1d2(inputs: &Inputs) -> Result<(f64, f64), BlackScholesError> {
+    let sigma = inputs.sigma.ok_or(BlackScholesError::MissingSigma)?;
     // Calculating numerator of d1
     let part1 = (inputs.s / inputs.k).ln();
 
-    if part1.is_infinite() {
-        return Err("Log from s/k is infinity".to_string());
+    if !part1.is_finite() {
+        return Err(BlackScholesError::InvalidLogSK);
     }
 
     let part2 = (inputs.r - inputs.q + (sigma.powi(2)) / 2.0) * inputs.t;
@@ -58,7 +59,7 @@ pub(crate) fn calc_d1d2(inputs: &Inputs) -> Result<(f64, f64), String> {
 
     // Calculating denominator of d1 and d2
     if inputs.t == 0.0 {
-        return Err("Time to maturity is 0".to_string());
+        return Err(BlackScholesError::TimeToMaturityZero);
     }
 
     let den = sigma * (inputs.t.sqrt());
@@ -74,7 +75,8 @@ pub(crate) fn calc_d1d2(inputs: &Inputs) -> Result<(f64, f64), String> {
 /// s, k, r, q, t, sigma
 /// # Returns
 /// Tuple (f64, f64) of (nd1, nd2)
-pub(crate) fn calc_nd1nd2(inputs: &Inputs) -> Result<(f64, f64), String> {
+#[inline(always)]
+pub(crate) fn calc_nd1nd2(inputs: &Inputs) -> Result<(f64, f64), BlackScholesError> {
     let (d1, d2) = calc_d1d2(inputs)?;
 
     // Calculates the nd1 and nd2 values
@@ -87,7 +89,8 @@ pub(crate) fn calc_nd1nd2(inputs: &Inputs) -> Result<(f64, f64), String> {
 
 /// # Returns
 /// f64 of the derivative of the nd1.
-pub fn calc_nprimed1(inputs: &Inputs) -> Result<f64, String> {
+#[inline(always)]
+pub fn calc_nprimed1(inputs: &Inputs) -> Result<f64, BlackScholesError> {
     let (d1, _) = calc_d1d2(inputs)?;
 
     // Get the standard n probability density function value of d1
@@ -97,7 +100,8 @@ pub fn calc_nprimed1(inputs: &Inputs) -> Result<f64, String> {
 
 /// # Returns
 /// f64 of the derivative of the nd2.
-pub(crate) fn calc_nprimed2(inputs: &Inputs) -> Result<f64, String> {
+#[inline(always)]
+pub(crate) fn calc_nprimed2(inputs: &Inputs) -> Result<f64, BlackScholesError> {
     let (_, d2) = calc_d1d2(inputs)?;
 
     // Get the standard n probability density function value of d1

@@ -23,7 +23,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     group.bench_function("vega", |b| b.iter(|| black_box(INPUTS.calc_vega())));
     group.bench_function("rho", |b| b.iter(|| black_box(INPUTS.calc_rho())));
     group.bench_function("all_greeks", |b| {
-        b.iter(|| black_box(INPUTS.calc_all_greeks()))
+        b.iter(|| black_box(INPUTS.calc_all_greeks().unwrap()))
     });
 
     group.finish();
