@@ -32,6 +32,17 @@
 //! ```
 //!
 //! Common variants include `MissingSigma`, `MissingPrice`, `TimeToMaturityZero`, `InvalidLogSK`, and `ConvergenceFailed` (for IV).
+//!
+//! Parallel batch
+//! --------------
+//! Enable the `parallel` feature to compute batches with Rayon:
+//!
+//! ```ignore
+//! # features = ["parallel"]
+//! use blackscholes::{batch::all_greeks_batch_par, Inputs, OptionType};
+//! let inputs = vec![Inputs::new(OptionType::Call, 100.0, 100.0, None, 0.05, 0.01, 0.25, Some(0.2)); 8_000];
+//! let results = all_greeks_batch_par(&inputs);
+//! ```
 
 pub use greeks::{AllGreeks, Greeks};
 pub use implied_volatility::ImpliedVolatility;
@@ -46,6 +57,7 @@ mod inputs;
 pub mod lets_be_rational;
 mod pricing;
 mod error;
+pub mod batch;
 
 pub(crate) const DAYS_PER_YEAR: f64 = 365.25;
 

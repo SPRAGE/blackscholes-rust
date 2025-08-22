@@ -105,6 +105,7 @@ dependencies = [
  "plotters",
  "proptest",
  "rand",
+ "rayon",
  "statrs",
 ]
 

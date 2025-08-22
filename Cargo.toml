@@ -39,9 +39,14 @@ indicatif = "0.17"
 [dependencies]
 num-traits = "0.2.19"
 statrs = "0.17.1"
+rayon = { version = "1.10", optional = true }
 
 [target.wasm32-unknown-unknown.dependencies]
 getrandom = { version = "0.2", features = ["js"] }
+
+[features]
+default = []
+parallel = ["rayon"]
 
 #[[bench]]
 #name = "black"

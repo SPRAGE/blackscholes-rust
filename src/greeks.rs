@@ -456,7 +456,12 @@ impl Greeks<f64> for Inputs {
 
         // Others
         let epsilon = -self.s * self.t * e_negqt * nd1 * self.option_type;
-    let lambda = delta * self.s / self.calc_price()?;
+        // Inline price computation to avoid extra work for lambda
+        let price = match self.option_type {
+            OptionType::Call => (nd1 * self.s * e_negqt - nd2 * self.k * e_negrt).max(0.0),
+            OptionType::Put => (nd2 * self.k * e_negrt - nd1 * self.s * e_negqt).max(0.0),
+        };
+        let lambda = delta * self.s / price;
         let vanna = d2 * e_negqt * nprimed1 * -0.01 / sigma;
         let charm = self.option_type * self.q * e_negqt * nd1
             - e_negqt * nprimed1 * (2.0 * (self.r - self.q) * self.t - d2 * sigma * sqrt_t)
