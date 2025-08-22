@@ -117,3 +117,20 @@ WASM: [npm](https://www.npmjs.com/package/@haydenr4/blackscholes_wasm)
 ## Build performance
 
 This repo enables LTO, codegen-units=1, opt-level=3, panic=abort and `target-cpu=native` (via `.cargo/config.toml`) for maximum throughput. Use `cargo bench` to run Criterion benchmarks.
+
+## Errors
+
+The library uses a typed error enum `BlackScholesError` instead of string errors. This makes it easy to handle specific failure modes:
+
+```rust
+use blackscholes::{Inputs, OptionType, Pricing, BlackScholesError};
+
+let inputs = Inputs::new(OptionType::Call, 100.0, 0.0, None, 0.05, 0.0, 30.0/365.25, Some(0.2));
+match inputs.calc_price() {
+    Ok(p) => println!("{}", p),
+    Err(BlackScholesError::MissingSigma) => eprintln!("volatility is required"),
+    Err(e) => eprintln!("error: {}", e),
+}
+```
+
+Common variants: `MissingSigma`, `MissingPrice`, `TimeToMaturityZero`, `InvalidLogSK`, `ConvergenceFailed`.

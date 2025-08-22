@@ -15,6 +15,23 @@
 //! ```
 //!
 //! See the [Github Repo](https://github.com/hayden4r4/blackscholes-rust/tree/master) for full source code.  Other implementations such as a [npm WASM package](https://www.npmjs.com/package/@haydenr4/blackscholes_wasm) and a [python module](https://pypi.org/project/blackscholes/) are also available.
+//!
+//! Errors
+//! -------
+//! This crate returns a typed error `BlackScholesError` instead of strings. You can match on variants:
+//!
+//! ```rust
+//! use blackscholes::{Inputs, OptionType, Pricing, BlackScholesError};
+//!
+//! let inputs = Inputs::new(OptionType::Call, 100.0, 100.0, None, 0.05, 0.01, 0.0, Some(0.2));
+//! match inputs.calc_price() {
+//!     Ok(price) => println!("price = {}", price),
+//!     Err(BlackScholesError::TimeToMaturityZero) => println!("t must be > 0"),
+//!     Err(e) => println!("error: {}", e),
+//! }
+//! ```
+//!
+//! Common variants include `MissingSigma`, `MissingPrice`, `TimeToMaturityZero`, `InvalidLogSK`, and `ConvergenceFailed` (for IV).
 
 pub use greeks::{AllGreeks, Greeks};
 pub use implied_volatility::ImpliedVolatility;
