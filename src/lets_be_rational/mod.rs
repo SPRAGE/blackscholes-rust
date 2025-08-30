@@ -56,28 +56,12 @@ pub fn black(
     time_to_maturity: f64,
     option_type: OptionType,
 ) -> f64 {
-    let signed_diff = option_type * (forward_price - strike_price);
-    let intrinsic = signed_diff.max(0.0);
-    // Map in-the-money to out-of-the-money
-    if signed_diff > 0.0 {
-        intrinsic
-            + black(
-                forward_price,
-                strike_price,
-                sigma,
-                time_to_maturity,
-                -option_type,
-            )
-    } else {
-        intrinsic.max(
-            (forward_price.sqrt() * strike_price.sqrt())
-                * normalised_black(
-                    (forward_price / strike_price).ln(),
-                    sigma * time_to_maturity.sqrt(),
-                    option_type,
-                ),
-        )
-    }
+    // Compute directly without recursion using the normalized Black function.
+    // normalised_black internally handles ITM/OTM mapping and intrinsic value.
+    let x = (forward_price / strike_price).ln();
+    let s = sigma * time_to_maturity.sqrt();
+    let root_fk = (forward_price * strike_price).sqrt();
+    root_fk * normalised_black(x, s, option_type)
 }
 
 /// Calculates the implied volatility of an option using a rational guess.
