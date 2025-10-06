@@ -45,7 +45,10 @@ rayon = { version = "1.10", optional = true }
 getrandom = { version = "0.2", features = ["js"] }
 
 [features]
-default = []
+# Precision selection (mutually exclusive). Default is f64.
+default = ["precision-f64"]
+precision-f64 = []
+precision-f32 = []
 parallel = ["rayon"]
 
 #[[bench]]

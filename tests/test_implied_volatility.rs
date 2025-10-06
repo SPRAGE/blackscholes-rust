@@ -1,3 +1,4 @@
+#[cfg(feature = "precision-f64")]
 mod tests {
     use assert_approx_eq::assert_approx_eq;
     use blackscholes::{ImpliedVolatility, Inputs, OptionType, Pricing};

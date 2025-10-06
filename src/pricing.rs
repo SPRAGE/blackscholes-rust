@@ -1,6 +1,11 @@
 use num_traits::Float;
 
-use crate::{lets_be_rational, BlackScholesError, Inputs, OptionType, *};
+use crate::{lets_be_rational, BlackScholesError, OptionType};
+use crate::lets_be_rational::normal_distribution::{standard_normal_cdf, standard_normal_pdf};
+// Import generic helper function for pricing
+use crate::calc_nd1nd2_generic;
+use crate::numeric::ModelNum;
+use crate::generic_inputs::InputsGeneric;
 
 pub trait Pricing<T>
 where
@@ -10,57 +15,29 @@ where
     fn calc_rational_price(&self) -> Result<f64, BlackScholesError>;
 }
 
-impl Pricing<f64> for Inputs {
-    /// Calculates the price of the option.
-    /// # Requires
-    /// s, k, r, q, t, sigma.
-    /// # Returns
-    /// f64 of the price of the option.
-    /// # Example
-    /// ```
-    /// use blackscholes::{Inputs, OptionType, Pricing};
-    /// let inputs = Inputs::new(OptionType::Call, 100.0, 100.0, None, 0.05, 0.2, 20.0/365.25, Some(0.2));
-    /// let price = inputs.calc_price().unwrap();
-    /// ```
-    fn calc_price(&self) -> Result<f64, BlackScholesError> {
-        // Calculates the price of the option
-        let (nd1, nd2): (f64, f64) = calc_nd1nd2(self)?;
-        let price: f64 = match self.option_type {
-            OptionType::Call => f64::max(
-                0.0,
-                nd1 * self.s * (-self.q * self.t).exp() - nd2 * self.k * (-self.r * self.t).exp(),
-            ),
-            OptionType::Put => f64::max(
-                0.0,
-                nd2 * self.k * (-self.r * self.t).exp() - nd1 * self.s * (-self.q * self.t).exp(),
-            ),
+// Legacy f64-specific Pricing impl removed; generic impl below (InputsGeneric<f64>) covers f64.
+
+// Generic implementation (transitional). Rational price kept f64-only for now.
+impl<T: ModelNum> Pricing<T> for InputsGeneric<T> {
+    fn calc_price(&self) -> Result<T, BlackScholesError> {
+        let (nd1, nd2) = calc_nd1nd2_generic(self)?;
+        let e_negqt = (-self.q * self.t).exp();
+        let e_negrt = (-self.r * self.t).exp();
+        let zero = T::ZERO;
+        let call_val = nd1 * self.s * e_negqt - nd2 * self.k * e_negrt;
+        let put_val = nd2 * self.k * e_negrt - nd1 * self.s * e_negqt;
+        let price = match self.option_type {
+            OptionType::Call => if call_val > zero { call_val } else { zero },
+            OptionType::Put => if put_val > zero { put_val } else { zero },
         };
         Ok(price)
     }
 
-    /// Calculates the price of the option using the "Let's Be Rational" implementation.
-    /// # Requires
-    /// s, k, r, q, t, sigma.
-    /// # Returns
-    /// f64 of the price of the option.
-    /// # Example
-    /// ```
-    /// use blackscholes::{Inputs, OptionType, Pricing};
-    /// let inputs = Inputs::new(OptionType::Call, 100.0, 100.0, None, 0.05, 0.2, 20.0/365.25, Some(0.2));
-    /// let price = inputs.calc_rational_price().unwrap();
-    /// ```
-    fn calc_rational_price(&self) -> Result<f64, BlackScholesError> {
+    fn calc_rational_price(&self) -> Result<f64, BlackScholesError> { // fallback: promote to f64
+        // Only meaningful if T can convert to f64
         let sigma = self.sigma.ok_or(BlackScholesError::MissingSigma)?;
-
-        // let's be rational wants the forward price, not the spot price.
-        let forward = self.s * ((self.r - self.q) * self.t).exp();
-
-        // price using `black`
-        let undiscounted_price =
-            lets_be_rational::black(forward, self.k, sigma, self.t, self.option_type);
-
-        // discount the price
-        let price = undiscounted_price * (-self.r * self.t).exp();
-        Ok(price)
+        let forward = self.s.to_f64().unwrap() * ((self.r.to_f64().unwrap() - self.q.to_f64().unwrap()) * self.t.to_f64().unwrap()).exp();
+        let undiscounted = lets_be_rational::black(forward, self.k.to_f64().unwrap(), sigma.to_f64().unwrap(), self.t.to_f64().unwrap(), self.option_type);
+        Ok(undiscounted * (-self.r.to_f64().unwrap() * self.t.to_f64().unwrap()).exp())
     }
 }

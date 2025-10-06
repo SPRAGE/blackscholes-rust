@@ -6,7 +6,7 @@
 //! ```
 //! use blackscholes::{Inputs, OptionType, Pricing};
 //! let inputs = Inputs::new(OptionType::Call, 100.0, 100.0, None, 0.05, 0.2, 20.0/365.25, Some(0.2));
-//! let price: f64 = inputs.calc_price().unwrap();
+//! let price = inputs.calc_price().unwrap();
 //! ```
 //!
 //! Criterion benchmark can be ran by running:
@@ -44,9 +44,10 @@
 //! let results = all_greeks_batch_par(&inputs);
 //! ```
 
-pub use greeks::{AllGreeks, Greeks};
+pub use greeks::{AllGreeksGeneric, GreeksGeneric};
 pub use implied_volatility::ImpliedVolatility;
-pub use inputs::{Inputs, OptionType};
+pub use inputs::OptionType;
+// Will migrate to aliasing generic version; keep original struct for transition.
 pub use crate::error::BlackScholesError;
 use lets_be_rational::normal_distribution::{standard_normal_cdf, standard_normal_pdf};
 pub use pricing::Pricing;
@@ -54,6 +55,8 @@ pub use pricing::Pricing;
 mod greeks;
 mod implied_volatility;
 mod inputs;
+mod numeric;
+mod generic_inputs;
 pub mod lets_be_rational;
 mod pricing;
 mod error;
@@ -68,12 +71,34 @@ pub(crate) const D: f64 = 7.535_022_5e-5;
 pub(crate) const _E: f64 = 1.424_516_45e-5;
 pub(crate) const F: f64 = -2.102_376_9e-5;
 
+// Transitional: expose generic inputs internally; later feature flags will decide alias.
+pub use generic_inputs::InputsGeneric;
+
+// Precision feature gating
+#[cfg(all(feature = "precision-f32", feature = "precision-f64"))]
+compile_error!("Enable only one of precision-f32 or precision-f64 features");
+
+#[cfg(feature = "precision-f64")]
+pub type InputsF64 = InputsGeneric<f64>;
+#[cfg(feature = "precision-f32")]
+pub type InputsF32 = InputsGeneric<f32>;
+
+// Backwards compatible alias `InputsSelected` for feature-based selection
+#[cfg(feature = "precision-f64")]
+pub type InputsSelected = InputsGeneric<f64>;
+#[cfg(feature = "precision-f32")]
+pub type InputsSelected = InputsGeneric<f32>;
+
+// Public stable name `Inputs` now maps directly to the feature-selected generic version.
+pub type Inputs = InputsSelected;
+
 /// Calculates the d1 and d2 values for the option.
 /// # Requires
 /// s, k, r, q, t, sigma.
 /// # Returns
 /// Tuple (f64, f64) of (d1, d2)
 #[inline(always)]
+#[cfg(feature = "precision-f64")]
 pub(crate) fn calc_d1d2(inputs: &Inputs) -> Result<(f64, f64), BlackScholesError> {
     let sigma = inputs.sigma.ok_or(BlackScholesError::MissingSigma)?;
     // Calculating numerator of d1
@@ -105,6 +130,7 @@ pub(crate) fn calc_d1d2(inputs: &Inputs) -> Result<(f64, f64), BlackScholesError
 /// # Returns
 /// Tuple (f64, f64) of (nd1, nd2)
 #[inline(always)]
+#[cfg(feature = "precision-f64")]
 pub(crate) fn calc_nd1nd2(inputs: &Inputs) -> Result<(f64, f64), BlackScholesError> {
     let (d1, d2) = calc_d1d2(inputs)?;
 
@@ -119,6 +145,7 @@ pub(crate) fn calc_nd1nd2(inputs: &Inputs) -> Result<(f64, f64), BlackScholesErr
 /// # Returns
 /// f64 of the derivative of the nd1.
 #[inline(always)]
+#[cfg(feature = "precision-f64")]
 pub fn calc_nprimed1(inputs: &Inputs) -> Result<f64, BlackScholesError> {
     let (d1, _) = calc_d1d2(inputs)?;
 
@@ -130,10 +157,53 @@ pub fn calc_nprimed1(inputs: &Inputs) -> Result<f64, BlackScholesError> {
 /// # Returns
 /// f64 of the derivative of the nd2.
 #[inline(always)]
+#[cfg(feature = "precision-f64")]
 pub(crate) fn calc_nprimed2(inputs: &Inputs) -> Result<f64, BlackScholesError> {
     let (_, d2) = calc_d1d2(inputs)?;
 
     // Get the standard n probability density function value of d1
     let nprimed2 = standard_normal_pdf(d2);
     Ok(nprimed2)
+}
+
+// ================= Generic transitional helpers =================
+use crate::numeric::ModelNum;
+// Removed redundant re-import of InputsGeneric (already publicly re-exported above)
+
+#[inline(always)]
+pub(crate) fn calc_d1d2_generic<T: ModelNum>(inputs: &InputsGeneric<T>) -> Result<(T, T), BlackScholesError> {
+    let sigma = inputs.sigma.ok_or(BlackScholesError::MissingSigma)?;
+    let part1 = (inputs.s / inputs.k).ln();
+    if !part1.is_finite() {
+        return Err(BlackScholesError::InvalidLogSK);
+    }
+    let part2 = (inputs.r - inputs.q + sigma * sigma / (T::ONE + T::ONE)) * inputs.t; // (sigma^2)/2
+    let numd1 = part1 + part2;
+    if inputs.t == T::ZERO { return Err(BlackScholesError::TimeToMaturityZero); }
+    let sqrt_t = inputs.t.sqrt();
+    let den = sigma * sqrt_t;
+    let d1 = numd1 / den;
+    let d2 = d1 - den;
+    Ok((d1, d2))
+}
+
+#[inline(always)]
+pub(crate) fn calc_nd1nd2_generic<T: ModelNum>(inputs: &InputsGeneric<T>) -> Result<(T, T), BlackScholesError> {
+    let (d1, d2) = calc_d1d2_generic(inputs)?;
+    match inputs.option_type {
+        OptionType::Call => Ok((T::from(standard_normal_cdf(d1.to_f64().unwrap())).unwrap(), T::from(standard_normal_cdf(d2.to_f64().unwrap())).unwrap())),
+        OptionType::Put => Ok((T::from(standard_normal_cdf((-d1).to_f64().unwrap())).unwrap(), T::from(standard_normal_cdf((-d2).to_f64().unwrap())).unwrap())),
+    }
+}
+
+#[inline(always)]
+pub(crate) fn calc_nprimed1_generic<T: ModelNum>(inputs: &InputsGeneric<T>) -> Result<T, BlackScholesError> {
+    let (d1, _) = calc_d1d2_generic(inputs)?;
+    Ok(T::from(standard_normal_pdf(d1.to_f64().unwrap())).unwrap())
+}
+
+#[inline(always)]
+pub(crate) fn calc_nprimed2_generic<T: ModelNum>(inputs: &InputsGeneric<T>) -> Result<T, BlackScholesError> {
+    let (_, d2) = calc_d1d2_generic(inputs)?;
+    Ok(T::from(standard_normal_pdf(d2.to_f64().unwrap())).unwrap())
 }

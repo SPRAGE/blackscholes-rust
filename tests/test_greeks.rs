@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use blackscholes::{Greeks, Inputs, OptionType};
+    use blackscholes::{GreeksGeneric, Inputs, OptionType};
 
     #[test]
     fn test_calc_delta_zero_stock_price() {
@@ -17,7 +17,7 @@ mod tests {
         let inputs = Inputs::new(option_type, s, k, p, r, q, t, sigma);
 
         // act
-        let result = inputs.calc_delta();
+    let result = inputs.calc_delta();
 
         // assert
         assert!(result.is_err());
@@ -38,7 +38,7 @@ mod tests {
         let inputs = Inputs::new(option_type, s, k, p, r, q, t, sigma);
 
         // act
-        let result = inputs.calc_delta();
+    let result = inputs.calc_delta();
 
         // assert
         assert!(result.is_err());
@@ -59,7 +59,7 @@ mod tests {
         let inputs = Inputs::new(option_type, s, k, p, r, q, t, sigma);
 
         // act
-        let result = inputs.calc_delta();
+    let result = inputs.calc_delta();
 
         // assert
         assert!(result.is_ok());
@@ -80,7 +80,7 @@ mod tests {
         let inputs = Inputs::new(option_type, s, k, p, r, q, t, sigma);
 
         // act
-        let result = inputs.calc_delta();
+    let result = inputs.calc_delta();
 
         // assert
         assert!(result.is_err());
@@ -101,7 +101,7 @@ mod tests {
         let inputs = Inputs::new(option_type, s, k, p, r, q, t, sigma);
 
         // act
-        let result = inputs.calc_delta();
+    let result = inputs.calc_delta();
 
         // assert
         assert!(result.is_err());
