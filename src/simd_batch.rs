@@ -481,7 +481,7 @@ pub fn greeks_batch_simd(inputs: &[Inputs]) -> Vec<AllGreeksGeneric<f32>> {
     for input in remainder {
         use crate::GreeksGeneric;
         results.push(input.calc_all_greeks_generic().unwrap_or_else(|_| {
-            AllGreeksGeneric {
+            AllGreeksGeneric::<f32> {
                 delta: 0.0, gamma: 0.0, theta: 0.0, vega: 0.0,
                 rho: 0.0, epsilon: 0.0, lambda: 0.0, vanna: 0.0,
                 charm: 0.0, veta: 0.0, vomma: 0.0, speed: 0.0,
@@ -637,14 +637,14 @@ pub fn iv_batch_simd(inputs: &[Inputs]) -> Vec<Result<f32, BlackScholesError>> {
         ];
         
         let prices = f32x8::new([
-            chunk[0].p.unwrap_or(0.0),
-            chunk[1].p.unwrap_or(0.0),
-            chunk[2].p.unwrap_or(0.0),
-            chunk[3].p.unwrap_or(0.0),
-            chunk[4].p.unwrap_or(0.0),
-            chunk[5].p.unwrap_or(0.0),
-            chunk[6].p.unwrap_or(0.0),
-            chunk[7].p.unwrap_or(0.0),
+            chunk[0].p.unwrap_or(0.0_f32),
+            chunk[1].p.unwrap_or(0.0_f32),
+            chunk[2].p.unwrap_or(0.0_f32),
+            chunk[3].p.unwrap_or(0.0_f32),
+            chunk[4].p.unwrap_or(0.0_f32),
+            chunk[5].p.unwrap_or(0.0_f32),
+            chunk[6].p.unwrap_or(0.0_f32),
+            chunk[7].p.unwrap_or(0.0_f32),
         ]);
         let prices_arr: [f32; 8] = prices.into();
         
