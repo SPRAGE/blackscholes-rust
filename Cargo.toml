@@ -40,6 +40,7 @@ indicatif = "0.17"
 num-traits = "0.2.19"
 statrs = "0.17.1"
 rayon = { version = "1.10", optional = true }
+wide = { version = "0.7", optional = true }
 
 [target.wasm32-unknown-unknown.dependencies]
 getrandom = { version = "0.2", features = ["js"] }
@@ -50,6 +51,7 @@ default = ["precision-f64"]
 precision-f64 = []
 precision-f32 = []
 parallel = ["rayon"]
+simd = ["wide"]
 
 #[[bench]]
 #name = "black"

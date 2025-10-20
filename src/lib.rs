@@ -62,6 +62,12 @@ mod pricing;
 mod error;
 pub mod batch;
 
+#[cfg(feature = "simd")]
+pub mod simd_ops;
+
+#[cfg(feature = "simd")]
+pub mod simd_batch;
+
 pub(crate) const DAYS_PER_YEAR: f64 = 365.25;
 
 pub(crate) const A: f64 = 4.626_275_3e-1;

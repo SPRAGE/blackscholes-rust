@@ -107,6 +107,7 @@ dependencies = [
  "rand",
  "rayon",
  "statrs",
+ "wide",
 ]
 
 [[package]]
